@@ -1,10 +1,87 @@
-// This is a complete implementation of an AI-powered contract generator using React + Vite
+// This is an improved implementation of an AI-powered contract generator using React + Vite + Material UI
 // File: src/App.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import './App.css';
+import { 
+  ThemeProvider, 
+  createTheme, 
+  CssBaseline,
+  Container,
+  Typography,
+  Box,
+  Paper,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Grid,
+  InputAdornment,
+  Divider,
+  useMediaQuery
+} from '@mui/material';
+import { 
+  Description as DescriptionIcon,
+  Download as DownloadIcon,
+  ArrowBack as ArrowBackIcon,
+  AttachMoney as MoneyIcon
+} from '@mui/icons-material';
+
+// Create a royal green theme
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1B5E20', // Dark green
+      light: '#43A047', // Light green
+      dark: '#003300', // Very dark green
+      contrastText: '#FFFFFF',
+    },
+    secondary: {
+      main: '#2E7D32', // Another green shade
+      light: '#60AD5E',
+      dark: '#005005',
+      contrastText: '#FFFFFF',
+    },
+    background: {
+      default: '#F5F9F6', // Light green tinted background
+      paper: '#FFFFFF',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h1: {
+      fontWeight: 500,
+    },
+    h4: {
+      fontWeight: 500,
+    }
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          textTransform: 'none',
+          padding: '10px 24px',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.1)',
+        },
+      },
+    },
+  },
+});
 
 function App() {
   const [step, setStep] = useState(1);
@@ -13,6 +90,45 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContract, setGeneratedContract] = useState('');
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [editableFields, setEditableFields] = useState({
+    amount: '',
+    startDate: '',
+    party1: '',
+    party2: '',
+    address: '',
+    term: '12',
+    notice: '30',
+  });
+  
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Update editable fields when contract changes
+  useEffect(() => {
+    if (generatedContract) {
+      // Extract the placeholder values from the contract content
+      const extractValue = (regex, defaultValue) => {
+        const match = generatedContract.match(regex);
+        return match ? match[1] : defaultValue;
+      };
+      
+      // We'll populate with values extracted from the contract or defaults
+      const newFields = {
+        amount: extractValue(/Total Monthly Rent: \$?(\[Amount\])/i, '') || 
+                extractValue(/Annual Salary: \$?(\[Amount\])/i, '') || 
+                extractValue(/Service Fee: \$?(\[Amount\])/i, '') || 
+                extractValue(/purchase price for the goods is \$?(\[Amount\])/i, '') ||
+                extractValue(/Total compensation: \$?(\[Amount\])/i, '') || '',
+        startDate: extractValue(/begins on (\[Start Date\])/i, ''),
+        party1: extractValue(/between (.*?) and/i, 'Party A'),
+        party2: extractValue(/and (.*?)(,| -)/i, 'Party B'),
+        address: '[Property Address]',
+        term: '12',
+        notice: '30',
+      };
+      
+      setEditableFields(newFields);
+    }
+  }, [generatedContract]);
 
   // Sample contract types
   const contractTypes = [
@@ -26,12 +142,10 @@ function App() {
   ];
 
   // This function simulates AI generating a contract
-  // In a real implementation, this would call an API endpoint
   const generateContractWithAI = async (summary, contractType) => {
     setIsGenerating(true);
     
     // In a real app, this would be an API call to a service like OpenAI
-    // For demonstration, we'll use a timeout to simulate API latency
     return new Promise((resolve) => {
       setTimeout(() => {
         // Extract key information from the summary
@@ -43,19 +157,19 @@ function App() {
         
         // Look for names in the summary
         const nameRegex = /(?:between|with|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g;
-        const matches = [...summary.matchAll(nameRegex)];
+        const matches = [...(summary.matchAll(nameRegex) || [])];
         const party1 = matches?.[0]?.[1] || 'Party A';
         const party2 = matches?.[1]?.[1] || 'Party B';
         
         // Extract money amounts, if any
         const moneyRegex = /\$(\d+(?:,\d+)*(?:\.\d+)?)/g;
-        const moneyMatches = [...summary.matchAll(moneyRegex)];
-        const amount = moneyMatches?.[0]?.[1] || '';
+        const moneyMatches = [...(summary.matchAll(moneyRegex) || [])];
+        const amount = moneyMatches?.[0]?.[1] || '[Amount]';
         
         // Extract dates, if any
         const dateRegex = /(?:on|by|starting|from)\s+(\w+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})/g;
-        const dateMatches = [...summary.matchAll(dateRegex)];
-        const startDate = dateMatches?.[0]?.[1] || '';
+        const dateMatches = [...(summary.matchAll(dateRegex) || [])];
+        const startDate = dateMatches?.[0]?.[1] || '[Start Date]';
         
         let contract = '';
         
@@ -76,11 +190,11 @@ The Roommates agree to share the residential property located at [Property Addre
 
 ## 3. TERM
 
-This Agreement begins on ${startDate || '[Start Date]'} and continues for [Term] months, unless terminated as provided herein.
+This Agreement begins on ${startDate} and continues for [Term] months, unless terminated as provided herein.
 
 ## 4. RENT AND EXPENSES
 
-- Total Monthly Rent: ${amount ? '$' + amount : '[Amount]'}
+- Total Monthly Rent: $${amount}
 - ${party1}'s Share: [Amount]
 - ${party2}'s Share: [Amount]
 - Security Deposit: [Amount]
@@ -102,7 +216,7 @@ Roommates agree to address conflicts directly and respectfully. If an issue cann
 
 ## 7. TERMINATION
 
-Either Roommate may terminate this Agreement with at least 30 days' written notice to the other Roommate.
+Either Roommate may terminate this Agreement with at least [Notice Period] days' written notice to the other Roommate.
 
 ## 8. SIGNATURES
 
@@ -126,7 +240,7 @@ Employee is hired for the position of [Job Title].
 
 ## 3. TERM
 
-Employment begins on ${startDate || '[Start Date]'} and continues until terminated by either party as provided herein.
+Employment begins on ${startDate} and continues until terminated by either party as provided herein.
 
 ## 4. WORKING HOURS
 
@@ -134,7 +248,7 @@ Employee will work according to the schedule determined by the Employer.
 
 ## 5. COMPENSATION
 
-- Annual Salary: ${amount ? '$' + amount : '[Amount]'}
+- Annual Salary: $${amount}
 - Pay Frequency: [Frequency]
 - Benefits: As per company policy.
 
@@ -175,17 +289,17 @@ Provider shall deliver:
 ## 4. TIMELINE
 
 Project timeline:
-Starting on ${startDate || '[Start Date]'} and ending on [End Date].
+Starting on ${startDate} and ending on [End Date].
 
 ## 5. COMPENSATION
 
-- Service Fee: ${amount ? '$' + amount : '[Amount]'}
+- Service Fee: $${amount}
 - Payment Schedule: [Payment Schedule]
 - Late Payment Fees: Late payments may incur additional fees as allowed by law.
 
 ## 6. TERM AND TERMINATION
 
-This Agreement remains in effect until services are completed or terminated by either party with written notice.
+This Agreement remains in effect until services are completed or terminated by either party with [Notice Period] days written notice.
 
 ## 7. SIGNATURES
 
@@ -209,11 +323,11 @@ The Landlord agrees to rent to the Tenant the property located at [Property Addr
 
 ## 3. TERM
 
-This Agreement begins on ${startDate || '[Start Date]'} and continues for [Term] months, unless terminated as provided herein.
+This Agreement begins on ${startDate} and continues for [Term] months, unless terminated as provided herein.
 
 ## 4. RENT AND DEPOSITS
 
-- Monthly Rent: ${amount ? '$' + amount : '[Amount]'}
+- Monthly Rent: $${amount}
 - Security Deposit: [Amount]
 - Pet Deposit (if applicable): [Amount]
 
@@ -292,7 +406,7 @@ The Seller agrees to sell and the Buyer agrees to purchase the following goods:
 
 ## 3. PURCHASE PRICE
 
-The purchase price for the goods is ${amount ? '$' + amount : '[Amount]'}.
+The purchase price for the goods is $${amount}.
 
 ## 4. PAYMENT TERMS
 
@@ -330,7 +444,7 @@ This Agreement is for the purpose of [Purpose].
 
 ## 3. TERM
 
-This Agreement begins on ${startDate || '[Start Date]'} and continues until [End Date], unless terminated earlier as provided herein.
+This Agreement begins on ${startDate} and continues until [End Date], unless terminated earlier as provided herein.
 
 ## 4. TERMS AND CONDITIONS
 
@@ -338,7 +452,7 @@ This Agreement begins on ${startDate || '[Start Date]'} and continues until [End
 
 ## 5. COMPENSATION
 
-Total compensation: ${amount ? '$' + amount : '[Amount]'}
+Total compensation: $${amount}
 
 ## 6. TERMINATION
 
@@ -361,7 +475,6 @@ ${party2} - Date: ______________
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!summary.trim() || !contractType) {
-      alert('Please provide a summary and select a contract type');
       return;
     }
     
@@ -370,97 +483,302 @@ ${party2} - Date: ______________
     setStep(2);
   };
 
+  const updateContract = (field, value) => {
+    let updatedContract = generatedContract;
+    
+    // Update the editable fields state
+    setEditableFields(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Update the contract text based on the field
+    switch (field) {
+      case 'amount':
+        // Replace amount placeholders
+        updatedContract = updatedContract.replace(/Total Monthly Rent: \$(\[Amount\])/g, `Total Monthly Rent: $${value}`);
+        updatedContract = updatedContract.replace(/Annual Salary: \$(\[Amount\])/g, `Annual Salary: $${value}`);
+        updatedContract = updatedContract.replace(/Service Fee: \$(\[Amount\])/g, `Service Fee: $${value}`);
+        updatedContract = updatedContract.replace(/purchase price for the goods is \$(\[Amount\])/g, `purchase price for the goods is $${value}`);
+        updatedContract = updatedContract.replace(/Total compensation: \$(\[Amount\])/g, `Total compensation: $${value}`);
+        break;
+      case 'startDate':
+        updatedContract = updatedContract.replace(/begins on (\[Start Date\])/g, `begins on ${value}`);
+        break;
+      case 'party1':
+        // This is more complex as we need to keep any role designations
+        const party1Regex = new RegExp(`between (.*?) and`, 'g');
+        updatedContract = updatedContract.replace(party1Regex, `between ${value} and`);
+        break;
+      case 'party2':
+        const party2Regex = new RegExp(`and (.*?)(?:,| -)`, 'g');
+        updatedContract = updatedContract.replace(party2Regex, `and ${value}$1`);
+        break;
+      case 'address':
+        updatedContract = updatedContract.replace(/\[Property Address\]/g, value);
+        break;
+      case 'term':
+        updatedContract = updatedContract.replace(/\[Term\]/g, value);
+        break;
+      case 'notice':
+        updatedContract = updatedContract.replace(/\[Notice Period\]/g, value);
+        break;
+      default:
+        break;
+    }
+    
+    setGeneratedContract(updatedContract);
+  };
+
   const downloadPDF = async () => {
-    const element = document.getElementById('contract-content');
-    const canvas = await html2canvas(element);
-    const imgData = canvas.toDataURL('image/png');
-    
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-    
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save('contract.pdf');
-    
-    setDownloadSuccess(true);
-    setTimeout(() => setDownloadSuccess(false), 3000);
+    try {
+      const element = document.getElementById('contract-content');
+      const canvas = await html2canvas(element);
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('contract.pdf');
+      
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    }
   };
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>AI-Powered Contract Generator</h1>
-        <p>Generate professional legal contracts with a simple summary</p>
-      </header>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box
+        sx={{
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <Box
+          sx={{
+            backgroundColor: 'primary.main',
+            color: 'primary.contrastText',
+            py: 3,
+            textAlign: 'center',
+            boxShadow: 3
+          }}
+        >
+          <Container>
+            <Typography variant="h4" component="h1" gutterBottom>
+              AI-Powered Contract Generator
+            </Typography>
+            <Typography variant="subtitle1">
+              Generate professional legal contracts with a simple summary
+            </Typography>
+          </Container>
+        </Box>
 
-      <main className="app-main">
-        {step === 1 ? (
-          <div className="input-section">
-            <form onSubmit={handleFormSubmit}>
-              <div className="form-group">
-                <label htmlFor="contract-type">Select Contract Type:</label>
-                <select 
-                  id="contract-type" 
-                  value={contractType} 
-                  onChange={(e) => setContractType(e.target.value)}
-                  required
-                >
-                  <option value="">-- Select Contract Type --</option>
-                  {contractTypes.map(type => (
-                    <option key={type.id} value={type.id}>{type.name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="summary">Describe your agreement:</label>
-                <textarea 
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4, flexGrow: 1, position: 'relative' }}>
+          {step === 1 ? (
+            <Paper elevation={3} sx={{ p: 4 }}>
+              <Box component="form" onSubmit={handleFormSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <FormControl fullWidth required>
+                  <InputLabel id="contract-type-label">Select Contract Type</InputLabel>
+                  <Select
+                    labelId="contract-type-label"
+                    id="contract-type"
+                    value={contractType}
+                    label="Select Contract Type"
+                    onChange={(e) => setContractType(e.target.value)}
+                  >
+                    {contractTypes.map(type => (
+                      <MenuItem key={type.id} value={type.id}>{type.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <TextField
                   id="summary"
+                  label="Describe your agreement"
+                  multiline
+                  rows={6}
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
-                  rows="6"
                   placeholder="Example: I need a roommate agreement between John Smith and Jane Doe for a rental property. The monthly rent is $1500 starting on January 1st, 2026."
+                  helperText="Include details like parties involved, amounts, dates, and any specific terms."
                   required
-                ></textarea>
-              </div>
+                  fullWidth
+                />
+                
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="large"
+                    disabled={isGenerating}
+                    startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <DescriptionIcon />}
+                  >
+                    {isGenerating ? 'Generating...' : 'Generate Contract'}
+                  </Button>
+                </Box>
+              </Box>
+            </Paper>
+          ) : (
+            <Grid container spacing={3}>
+              {/* Editable Fields Panel */}
+              <Grid item xs={12} md={3}>
+                <Paper elevation={3} sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Edit Contract Details
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <TextField
+                      label="Amount"
+                      value={editableFields.amount}
+                      onChange={(e) => updateContract('amount', e.target.value)}
+                      size="small"
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                      }}
+                    />
+                    
+                    <TextField
+                      label="Start Date"
+                      value={editableFields.startDate}
+                      onChange={(e) => updateContract('startDate', e.target.value)}
+                      size="small"
+                      placeholder="e.g. January 1, 2026"
+                    />
+                    
+                    <TextField
+                      label="Party 1"
+                      value={editableFields.party1}
+                      onChange={(e) => updateContract('party1', e.target.value)}
+                      size="small"
+                    />
+                    
+                    <TextField
+                      label="Party 2"
+                      value={editableFields.party2}
+                      onChange={(e) => updateContract('party2', e.target.value)}
+                      size="small"
+                    />
+                    
+                    <TextField
+                      label="Address"
+                      value={editableFields.address}
+                      onChange={(e) => updateContract('address', e.target.value)}
+                      size="small"
+                    />
+                    
+                    <TextField
+                      label="Term (months)"
+                      value={editableFields.term}
+                      onChange={(e) => updateContract('term', e.target.value)}
+                      size="small"
+                      type="number"
+                    />
+                    
+                    <TextField
+                      label="Notice Period (days)"
+                      value={editableFields.notice}
+                      onChange={(e) => updateContract('notice', e.target.value)}
+                      size="small"
+                      type="number"
+                    />
+                  </Box>
+                </Paper>
+              </Grid>
               
-              <button type="submit" className="primary-button" disabled={isGenerating}>
-                {isGenerating ? 'Generating...' : 'Generate Contract'}
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div className="result-section">
-            <div className="contract-container">
-              <div id="contract-content" className="contract">
-                <div dangerouslySetInnerHTML={{ __html: generatedContract.replace(/\n/g, '<br />') }}></div>
-              </div>
-            </div>
-            
-            <div className="action-buttons">
-              <button onClick={() => setStep(1)} className="secondary-button">
-                Back to Editor
-              </button>
-              <button onClick={downloadPDF} className="primary-button">
-                Download as PDF
-              </button>
-            </div>
-            
-            {downloadSuccess && (
-              <div className="success-message">
-                <span>✓</span> Contract downloaded successfully!
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-    </div>
+              {/* Contract Preview */}
+              <Grid item xs={12} md={9}>
+                <Paper elevation={3} sx={{ p: { xs: 2, md: 4 }, mb: 3 }}>
+                  <Box id="contract-content" sx={{ 
+                    fontFamily: '"Times New Roman", Times, serif',
+                    fontSize: '14px',
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    '& h1': {
+                      fontSize: '24px',
+                      textAlign: 'center',
+                      fontWeight: 'bold',
+                      marginBottom: '1em'
+                    },
+                    '& h2': {
+                      fontSize: '16px',
+                      fontWeight: 'bold'
+                    },
+                    '& h3': {
+                      fontSize: '14px',
+                      fontWeight: 'bold'
+                    },
+                    '& strong': {
+                      fontWeight: 'bold'
+                    }
+                  }}>
+                    <div dangerouslySetInnerHTML={{ __html: generatedContract.replace(/\n/g, '<br />') }}></div>
+                  </Box>
+                </Paper>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                  <Button
+                    onClick={() => setStep(1)}
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon />}
+                  >
+                    Back to Editor
+                  </Button>
+                  <Button
+                    onClick={downloadPDF}
+                    variant="contained"
+                    color="primary"
+                    startIcon={<DownloadIcon />}
+                  >
+                    Download as PDF
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          )}
+        </Container>
+        
+        <Box
+          component="footer"
+          sx={{
+            py: 3,
+            px: 2,
+            mt: 'auto',
+            backgroundColor: 'primary.dark',
+            color: 'white',
+            textAlign: 'center'
+          }}
+        >
+          <Typography variant="body2">
+            © {new Date().getFullYear()} AI-Powered Contract Generator
+          </Typography>
+        </Box>
+      </Box>
+      
+      <Snackbar
+        open={downloadSuccess}
+        autoHideDuration={3000}
+        onClose={() => setDownloadSuccess(false)}
+      >
+        <Alert onClose={() => setDownloadSuccess(false)} severity="success" sx={{ width: '100%' }}>
+          Contract downloaded successfully!
+        </Alert>
+      </Snackbar>
+    </ThemeProvider>
   );
 }
 
