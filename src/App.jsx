@@ -1,6 +1,3 @@
-// This is an improved implementation of an AI-powered contract generator using React + Vite + Material UI
-// File: src/App.jsx
-
 import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -29,38 +26,31 @@ import {
 import { 
   Description as DescriptionIcon,
   Download as DownloadIcon,
-  ArrowBack as ArrowBackIcon,
-  AttachMoney as MoneyIcon
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 
 // Create a royal green theme
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1B5E20', // Dark green
-      light: '#43A047', // Light green
-      dark: '#003300', // Very dark green
+      main: '#1B5E20',
+      light: '#43A047',
+      dark: '#003300',
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#2E7D32', // Another green shade
+      main: '#2E7D32',
       light: '#60AD5E',
       dark: '#005005',
       contrastText: '#FFFFFF',
     },
     background: {
-      default: '#F5F9F6', // Light green tinted background
+      default: '#F5F9F6',
       paper: '#FFFFFF',
     },
   },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontWeight: 500,
-    },
-    h4: {
-      fontWeight: 500,
-    }
   },
   components: {
     MuiButton: {
@@ -83,120 +73,30 @@ const theme = createTheme({
   },
 });
 
-function App() {
-  const [step, setStep] = useState(1);
-  const [summary, setSummary] = useState('');
-  const [contractType, setContractType] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedContract, setGeneratedContract] = useState('');
-  const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [editableFields, setEditableFields] = useState({
-    amount: '',
-    startDate: '',
-    party1: '',
-    party2: '',
-    address: '',
-    term: '12',
-    notice: '30',
-  });
-  
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
-  // Update editable fields when contract changes
-  useEffect(() => {
-    if (generatedContract) {
-      // Extract the placeholder values from the contract content
-      const extractValue = (regex, defaultValue) => {
-        const match = generatedContract.match(regex);
-        return match ? match[1] : defaultValue;
-      };
-      
-      // We'll populate with values extracted from the contract or defaults
-      const newFields = {
-        amount: extractValue(/Total Monthly Rent: \$?(\[Amount\])/i, '') || 
-                extractValue(/Annual Salary: \$?(\[Amount\])/i, '') || 
-                extractValue(/Service Fee: \$?(\[Amount\])/i, '') || 
-                extractValue(/purchase price for the goods is \$?(\[Amount\])/i, '') ||
-                extractValue(/Total compensation: \$?(\[Amount\])/i, '') || '',
-        startDate: extractValue(/begins on (\[Start Date\])/i, ''),
-        party1: extractValue(/between (.*?) and/i, 'Party A'),
-        party2: extractValue(/and (.*?)(,| -)/i, 'Party B'),
-        address: '[Property Address]',
-        term: '12',
-        notice: '30',
-      };
-      
-      setEditableFields(newFields);
-    }
-  }, [generatedContract]);
-
-  // Sample contract types
-  const contractTypes = [
-    { id: 'roommate', name: 'Roommate Agreement' },
-    { id: 'rental', name: 'Rental Agreement' },
-    { id: 'employment', name: 'Employment Contract' },
-    { id: 'service', name: 'Service Agreement' },
-    { id: 'nda', name: 'Non-Disclosure Agreement' },
-    { id: 'sales', name: 'Sales Contract' },
-    { id: 'other', name: 'Other Contract Type' }
-  ];
-
-  // This function simulates AI generating a contract
-  const generateContractWithAI = async (summary, contractType) => {
-    setIsGenerating(true);
-    
-    // In a real app, this would be an API call to a service like OpenAI
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Extract key information from the summary
-        const today = new Date().toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-        
-        // Look for names in the summary
-        const nameRegex = /(?:between|with|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g;
-        const matches = [...(summary.matchAll(nameRegex) || [])];
-        const party1 = matches?.[0]?.[1] || 'Party A';
-        const party2 = matches?.[1]?.[1] || 'Party B';
-        
-        // Extract money amounts, if any
-        const moneyRegex = /\$(\d+(?:,\d+)*(?:\.\d+)?)/g;
-        const moneyMatches = [...(summary.matchAll(moneyRegex) || [])];
-        const amount = moneyMatches?.[0]?.[1] || '[Amount]';
-        
-        // Extract dates, if any
-        const dateRegex = /(?:on|by|starting|from)\s+(\w+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})/g;
-        const dateMatches = [...(summary.matchAll(dateRegex) || [])];
-        const startDate = dateMatches?.[0]?.[1] || '[Start Date]';
-        
-        let contract = '';
-        
-        // Generate contract based on type
-        if (contractType === 'roommate') {
-          contract = `
+// Contract templates
+const contractTemplates = {
+  roommate: (data) => `
 # ROOMMATE AGREEMENT
 
-**Date:** ${today}
+**Date:** ${data.today}
 
 ## 1. PARTIES
 
-This Roommate Agreement ("Agreement") is made between ${party1} and ${party2}, collectively referred to as "Roommates."
+This Roommate Agreement ("Agreement") is made between ${data.party1} and ${data.party2}, collectively referred to as "Roommates."
 
 ## 2. PROPERTY
 
-The Roommates agree to share the residential property located at [Property Address].
+The Roommates agree to share the residential property located at ${data.address}.
 
 ## 3. TERM
 
-This Agreement begins on ${startDate} and continues for [Term] months, unless terminated as provided herein.
+This Agreement begins on ${data.startDate} and continues for ${data.term} months, unless terminated as provided herein.
 
 ## 4. RENT AND EXPENSES
 
-- Total Monthly Rent: $${amount}
-- ${party1}'s Share: [Amount]
-- ${party2}'s Share: [Amount]
+- Total Monthly Rent: $${data.amount}
+- ${data.party1}'s Share: [Amount]
+- ${data.party2}'s Share: [Amount]
 - Security Deposit: [Amount]
 
 ## 5. HOUSE RULES
@@ -216,118 +116,34 @@ Roommates agree to address conflicts directly and respectfully. If an issue cann
 
 ## 7. TERMINATION
 
-Either Roommate may terminate this Agreement with at least [Notice Period] days' written notice to the other Roommate.
+Either Roommate may terminate this Agreement with at least ${data.notice} days' written notice to the other Roommate.
 
 ## 8. SIGNATURES
 
-${party1} - Date: ______________
+${data.party1} - Date: ______________
 
-${party2} - Date: ______________
-`;
-        } else if (contractType === 'employment') {
-          contract = `
-# EMPLOYMENT CONTRACT
-
-**Date:** ${today}
-
-## 1. PARTIES
-
-This Employment Contract ("Contract") is made between ${party1} ("Employer") and ${party2} ("Employee").
-
-## 2. POSITION
-
-Employee is hired for the position of [Job Title].
-
-## 3. TERM
-
-Employment begins on ${startDate} and continues until terminated by either party as provided herein.
-
-## 4. WORKING HOURS
-
-Employee will work according to the schedule determined by the Employer.
-
-## 5. COMPENSATION
-
-- Annual Salary: $${amount}
-- Pay Frequency: [Frequency]
-- Benefits: As per company policy.
-
-## 6. TERMINATION
-
-Either party may terminate this Contract with appropriate notice as required by applicable law.
-
-## 7. CONFIDENTIALITY
-
-Employee agrees to maintain confidentiality of all proprietary information obtained during employment.
-
-## 8. SIGNATURES
-
-${party1} ("Employer") - Date: ______________
-
-${party2} ("Employee") - Date: ______________
-`;
-        } else if (contractType === 'service') {
-          contract = `
-# SERVICE AGREEMENT
-
-**Date:** ${today}
-
-## 1. PARTIES
-
-This Service Agreement ("Agreement") is made between ${party1} ("Client") and ${party2} ("Provider").
-
-## 2. SERVICES
-
-Provider agrees to provide the following services to Client:
-[Service Description]
-
-## 3. DELIVERABLES
-
-Provider shall deliver:
-[List of Deliverables]
-
-## 4. TIMELINE
-
-Project timeline:
-Starting on ${startDate} and ending on [End Date].
-
-## 5. COMPENSATION
-
-- Service Fee: $${amount}
-- Payment Schedule: [Payment Schedule]
-- Late Payment Fees: Late payments may incur additional fees as allowed by law.
-
-## 6. TERM AND TERMINATION
-
-This Agreement remains in effect until services are completed or terminated by either party with [Notice Period] days written notice.
-
-## 7. SIGNATURES
-
-${party1} ("Client") - Date: ______________
-
-${party2} ("Provider") - Date: ______________
-`;
-        } else if (contractType === 'rental') {
-          contract = `
+${data.party2} - Date: ______________
+`,
+  rental: (data) => `
 # RENTAL AGREEMENT
 
-**Date:** ${today}
+**Date:** ${data.today}
 
 ## 1. PARTIES
 
-This Rental Agreement ("Agreement") is made between ${party1} ("Landlord") and ${party2} ("Tenant").
+This Rental Agreement ("Agreement") is made between ${data.party1} ("Landlord") and ${data.party2} ("Tenant").
 
 ## 2. PROPERTY
 
-The Landlord agrees to rent to the Tenant the property located at [Property Address].
+The Landlord agrees to rent to the Tenant the property located at ${data.address}.
 
 ## 3. TERM
 
-This Agreement begins on ${startDate} and continues for [Term] months, unless terminated as provided herein.
+This Agreement begins on ${data.startDate} and continues for ${data.term} months, unless terminated as provided herein.
 
 ## 4. RENT AND DEPOSITS
 
-- Monthly Rent: $${amount}
+- Monthly Rent: $${data.amount}
 - Security Deposit: [Amount]
 - Pet Deposit (if applicable): [Amount]
 
@@ -345,23 +161,103 @@ The Landlord is responsible for maintaining the property in a habitable conditio
 
 ## 7. TERMINATION
 
-Either party may terminate this Agreement with at least [Notice Period] days' written notice.
+Either party may terminate this Agreement with at least ${data.notice} days' written notice.
 
 ## 8. SIGNATURES
 
-${party1} ("Landlord") - Date: ______________
+${data.party1} ("Landlord") - Date: ______________
 
-${party2} ("Tenant") - Date: ______________
-`;
-        } else if (contractType === 'nda') {
-          contract = `
-# NON-DISCLOSURE AGREEMENT
+${data.party2} ("Tenant") - Date: ______________
+`,
+  employment: (data) => `
+# EMPLOYMENT CONTRACT
 
-**Date:** ${today}
+**Date:** ${data.today}
 
 ## 1. PARTIES
 
-This Non-Disclosure Agreement ("Agreement") is made between ${party1} ("Disclosing Party") and ${party2} ("Receiving Party").
+This Employment Contract ("Contract") is made between ${data.party1} ("Employer") and ${data.party2} ("Employee").
+
+## 2. POSITION
+
+Employee is hired for the position of [Job Title].
+
+## 3. TERM
+
+Employment begins on ${data.startDate} and continues until terminated by either party as provided herein.
+
+## 4. WORKING HOURS
+
+Employee will work according to the schedule determined by the Employer.
+
+## 5. COMPENSATION
+
+- Annual Salary: $${data.amount}
+- Pay Frequency: [Frequency]
+- Benefits: As per company policy.
+
+## 6. TERMINATION
+
+Either party may terminate this Contract with ${data.notice} days notice as required by applicable law.
+
+## 7. CONFIDENTIALITY
+
+Employee agrees to maintain confidentiality of all proprietary information obtained during employment.
+
+## 8. SIGNATURES
+
+${data.party1} ("Employer") - Date: ______________
+
+${data.party2} ("Employee") - Date: ______________
+`,
+  service: (data) => `
+# SERVICE AGREEMENT
+
+**Date:** ${data.today}
+
+## 1. PARTIES
+
+This Service Agreement ("Agreement") is made between ${data.party1} ("Client") and ${data.party2} ("Provider").
+
+## 2. SERVICES
+
+Provider agrees to provide the following services to Client:
+[Service Description]
+
+## 3. DELIVERABLES
+
+Provider shall deliver:
+[List of Deliverables]
+
+## 4. TIMELINE
+
+Project timeline:
+Starting on ${data.startDate} and ending on [End Date].
+
+## 5. COMPENSATION
+
+- Service Fee: $${data.amount}
+- Payment Schedule: [Payment Schedule]
+- Late Payment Fees: Late payments may incur additional fees as allowed by law.
+
+## 6. TERM AND TERMINATION
+
+This Agreement remains in effect until services are completed or terminated by either party with ${data.notice} days written notice.
+
+## 7. SIGNATURES
+
+${data.party1} ("Client") - Date: ______________
+
+${data.party2} ("Provider") - Date: ______________
+`,
+  nda: (data) => `
+# NON-DISCLOSURE AGREEMENT
+
+**Date:** ${data.today}
+
+## 1. PARTIES
+
+This Non-Disclosure Agreement ("Agreement") is made between ${data.party1} ("Disclosing Party") and ${data.party2} ("Receiving Party").
 
 ## 2. PURPOSE
 
@@ -381,23 +277,22 @@ The Receiving Party shall:
 
 ## 5. TERM
 
-This Agreement shall remain in effect for [Term] years from the date of execution.
+This Agreement shall remain in effect for ${data.term} years from the date of execution.
 
 ## 6. SIGNATURES
 
-${party1} ("Disclosing Party") - Date: ______________
+${data.party1} ("Disclosing Party") - Date: ______________
 
-${party2} ("Receiving Party") - Date: ______________
-`;
-        } else if (contractType === 'sales') {
-          contract = `
+${data.party2} ("Receiving Party") - Date: ______________
+`,
+  sales: (data) => `
 # SALES CONTRACT
 
-**Date:** ${today}
+**Date:** ${data.today}
 
 ## 1. PARTIES
 
-This Sales Contract ("Contract") is made between ${party1} ("Seller") and ${party2} ("Buyer").
+This Sales Contract ("Contract") is made between ${data.party1} ("Seller") and ${data.party2} ("Buyer").
 
 ## 2. GOODS
 
@@ -406,7 +301,7 @@ The Seller agrees to sell and the Buyer agrees to purchase the following goods:
 
 ## 3. PURCHASE PRICE
 
-The purchase price for the goods is $${amount}.
+The purchase price for the goods is $${data.amount}.
 
 ## 4. PAYMENT TERMS
 
@@ -415,7 +310,7 @@ Payment shall be made as follows:
 
 ## 5. DELIVERY
 
-The goods shall be delivered to [Delivery Address] on or before [Delivery Date].
+The goods shall be delivered to ${data.address} on or before [Delivery Date].
 
 ## 6. WARRANTIES
 
@@ -423,20 +318,18 @@ The Seller warrants that the goods are free from defects in materials and workma
 
 ## 7. SIGNATURES
 
-${party1} ("Seller") - Date: ______________
+${data.party1} ("Seller") - Date: ______________
 
-${party2} ("Buyer") - Date: ______________
-`;
-        } else {
-          // Generic contract for "other" type
-          contract = `
+${data.party2} ("Buyer") - Date: ______________
+`,
+  other: (data) => `
 # CONTRACT AGREEMENT
 
-**Date:** ${today}
+**Date:** ${data.today}
 
 ## 1. PARTIES
 
-This Agreement is made between ${party1} and ${party2}.
+This Agreement is made between ${data.party1} and ${data.party2}.
 
 ## 2. PURPOSE
 
@@ -444,7 +337,7 @@ This Agreement is for the purpose of [Purpose].
 
 ## 3. TERM
 
-This Agreement begins on ${startDate} and continues until [End Date], unless terminated earlier as provided herein.
+This Agreement begins on ${data.startDate} and continues for ${data.term} months, unless terminated earlier as provided herein.
 
 ## 4. TERMS AND CONDITIONS
 
@@ -452,26 +345,100 @@ This Agreement begins on ${startDate} and continues until [End Date], unless ter
 
 ## 5. COMPENSATION
 
-Total compensation: $${amount}
+Total compensation: $${data.amount}
 
 ## 6. TERMINATION
 
-This Agreement may be terminated by either party with [Notice Period] days' written notice.
+This Agreement may be terminated by either party with ${data.notice} days' written notice.
 
 ## 7. SIGNATURES
 
-${party1} - Date: ______________
+${data.party1} - Date: ______________
 
-${party2} - Date: ______________
-`;
-        }
+${data.party2} - Date: ______________
+`
+};
+
+// Sample contract types
+const contractTypes = [
+  { id: 'roommate', name: 'Roommate Agreement' },
+  { id: 'rental', name: 'Rental Agreement' },
+  { id: 'employment', name: 'Employment Contract' },
+  { id: 'service', name: 'Service Agreement' },
+  { id: 'nda', name: 'Non-Disclosure Agreement' },
+  { id: 'sales', name: 'Sales Contract' },
+  { id: 'other', name: 'Other Contract Type' }
+];
+
+function App() {
+  const [step, setStep] = useState(1);
+  const [summary, setSummary] = useState('');
+  const [contractType, setContractType] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedContract, setGeneratedContract] = useState('');
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [contractData, setContractData] = useState({
+    amount: '',
+    startDate: '',
+    party1: '',
+    party2: '',
+    address: '',
+    term: '12',
+    notice: '30',
+    today: new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  });
+  
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Generate contract based on summary and type
+  const generateContractWithAI = async (summary, contractType) => {
+    setIsGenerating(true);
+    
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Extract key information from the summary
+        // Look for names in the summary
+        const nameRegex = /(?:between|with|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g;
+        const matches = [...(summary.matchAll(nameRegex) || [])];
+        const party1 = matches?.[0]?.[1] || 'Party A';
+        const party2 = matches?.[1]?.[1] || 'Party B';
+        
+        // Extract money amounts, if any
+        const moneyRegex = /\$(\d+(?:,\d+)*(?:\.\d+)?)/g;
+        const moneyMatches = [...(summary.matchAll(moneyRegex) || [])];
+        const amount = moneyMatches?.[0]?.[1] || '[Amount]';
+        
+        // Extract dates, if any
+        const dateRegex = /(?:on|by|starting|from)\s+(\w+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})/g;
+        const dateMatches = [...(summary.matchAll(dateRegex) || [])];
+        const startDate = dateMatches?.[0]?.[1] || '[Start Date]';
+        
+        // Update contract data with extracted info
+        const newContractData = {
+          ...contractData,
+          amount,
+          startDate,
+          party1,
+          party2,
+          address: '[Property Address]'
+        };
+        
+        setContractData(newContractData);
+        
+        // Generate contract from template
+        const contract = contractTemplates[contractType](newContractData);
         
         setIsGenerating(false);
         resolve(contract);
-      }, 1500); // Simulate API delay
+      }, 1000);
     });
   };
 
+  // Handle form submission
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!summary.trim() || !contractType) {
@@ -483,53 +450,18 @@ ${party2} - Date: ______________
     setStep(2);
   };
 
-  const updateContract = (field, value) => {
-    let updatedContract = generatedContract;
-    
-    // Update the editable fields state
-    setEditableFields(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Update the contract text based on the field
-    switch (field) {
-      case 'amount':
-        // Replace amount placeholders
-        updatedContract = updatedContract.replace(/Total Monthly Rent: \$(\[Amount\])/g, `Total Monthly Rent: $${value}`);
-        updatedContract = updatedContract.replace(/Annual Salary: \$(\[Amount\])/g, `Annual Salary: $${value}`);
-        updatedContract = updatedContract.replace(/Service Fee: \$(\[Amount\])/g, `Service Fee: $${value}`);
-        updatedContract = updatedContract.replace(/purchase price for the goods is \$(\[Amount\])/g, `purchase price for the goods is $${value}`);
-        updatedContract = updatedContract.replace(/Total compensation: \$(\[Amount\])/g, `Total compensation: $${value}`);
-        break;
-      case 'startDate':
-        updatedContract = updatedContract.replace(/begins on (\[Start Date\])/g, `begins on ${value}`);
-        break;
-      case 'party1':
-        // This is more complex as we need to keep any role designations
-        const party1Regex = new RegExp(`between (.*?) and`, 'g');
-        updatedContract = updatedContract.replace(party1Regex, `between ${value} and`);
-        break;
-      case 'party2':
-        const party2Regex = new RegExp(`and (.*?)(?:,| -)`, 'g');
-        updatedContract = updatedContract.replace(party2Regex, `and ${value}$1`);
-        break;
-      case 'address':
-        updatedContract = updatedContract.replace(/\[Property Address\]/g, value);
-        break;
-      case 'term':
-        updatedContract = updatedContract.replace(/\[Term\]/g, value);
-        break;
-      case 'notice':
-        updatedContract = updatedContract.replace(/\[Notice Period\]/g, value);
-        break;
-      default:
-        break;
-    }
-    
-    setGeneratedContract(updatedContract);
+  // Update contract data and regenerate contract
+  const updateContractData = (field, value) => {
+    setContractData(prev => {
+      const updated = { ...prev, [field]: value };
+      // Regenerate contract with updated data
+      const newContract = contractTemplates[contractType](updated);
+      setGeneratedContract(newContract);
+      return updated;
+    });
   };
 
+  // Download PDF
   const downloadPDF = async () => {
     try {
       const element = document.getElementById('contract-content');
@@ -556,26 +488,35 @@ ${party2} - Date: ______________
     }
   };
 
+  // Contract preview styles
+  const contractStyles = {
+    fontFamily: '"Times New Roman", Times, serif',
+    fontSize: '14px',
+    lineHeight: 1.6,
+    whiteSpace: 'pre-wrap',
+    padding: '20px',
+    '& h1': {
+      fontSize: '24px',
+      textAlign: 'center',
+      fontWeight: 'bold',
+      marginBottom: '1em'
+    },
+    '& h2': {
+      fontSize: '16px',
+      fontWeight: 'bold'
+    },
+    '& h3': {
+      fontSize: '14px',
+      fontWeight: 'bold'
+    }
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box
-        sx={{
-          minHeight: '100vh',
-          backgroundColor: 'background.default',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <Box
-          sx={{
-            backgroundColor: 'primary.main',
-            color: 'primary.contrastText',
-            py: 3,
-            textAlign: 'center',
-            boxShadow: 3
-          }}
-        >
+      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'background.default' }}>
+        {/* Header */}
+        <Box sx={{ backgroundColor: 'primary.main', color: 'white', py: 3, textAlign: 'center', boxShadow: 3 }}>
           <Container>
             <Typography variant="h4" component="h1" gutterBottom>
               AI-Powered Contract Generator
@@ -586,9 +527,11 @@ ${party2} - Date: ______________
           </Container>
         </Box>
 
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4, flexGrow: 1, position: 'relative' }}>
+        {/* Main Content */}
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
           {step === 1 ? (
-            <Paper elevation={3} sx={{ p: 4 }}>
+            /* Contract Input Form */
+            <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 } }}>
               <Box component="form" onSubmit={handleFormSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <FormControl fullWidth required>
                   <InputLabel id="contract-type-label">Select Contract Type</InputLabel>
@@ -632,10 +575,11 @@ ${party2} - Date: ______________
               </Box>
             </Paper>
           ) : (
+            /* Contract Editor/Preview */
             <Grid container spacing={3}>
               {/* Editable Fields Panel */}
-              <Grid item xs={12} md={3}>
-                <Paper elevation={3} sx={{ p: 3 }}>
+              <Grid item xs={12} md={4} lg={3}>
+                <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
                   <Typography variant="h6" gutterBottom>
                     Edit Contract Details
                   </Typography>
@@ -644,8 +588,8 @@ ${party2} - Date: ______________
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <TextField
                       label="Amount"
-                      value={editableFields.amount}
-                      onChange={(e) => updateContract('amount', e.target.value)}
+                      value={contractData.amount}
+                      onChange={(e) => updateContractData('amount', e.target.value)}
                       size="small"
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
@@ -654,45 +598,45 @@ ${party2} - Date: ______________
                     
                     <TextField
                       label="Start Date"
-                      value={editableFields.startDate}
-                      onChange={(e) => updateContract('startDate', e.target.value)}
+                      value={contractData.startDate}
+                      onChange={(e) => updateContractData('startDate', e.target.value)}
                       size="small"
                       placeholder="e.g. January 1, 2026"
                     />
                     
                     <TextField
                       label="Party 1"
-                      value={editableFields.party1}
-                      onChange={(e) => updateContract('party1', e.target.value)}
+                      value={contractData.party1}
+                      onChange={(e) => updateContractData('party1', e.target.value)}
                       size="small"
                     />
                     
                     <TextField
                       label="Party 2"
-                      value={editableFields.party2}
-                      onChange={(e) => updateContract('party2', e.target.value)}
+                      value={contractData.party2}
+                      onChange={(e) => updateContractData('party2', e.target.value)}
                       size="small"
                     />
                     
                     <TextField
                       label="Address"
-                      value={editableFields.address}
-                      onChange={(e) => updateContract('address', e.target.value)}
+                      value={contractData.address}
+                      onChange={(e) => updateContractData('address', e.target.value)}
                       size="small"
                     />
                     
                     <TextField
                       label="Term (months)"
-                      value={editableFields.term}
-                      onChange={(e) => updateContract('term', e.target.value)}
+                      value={contractData.term}
+                      onChange={(e) => updateContractData('term', e.target.value)}
                       size="small"
                       type="number"
                     />
                     
                     <TextField
                       label="Notice Period (days)"
-                      value={editableFields.notice}
-                      onChange={(e) => updateContract('notice', e.target.value)}
+                      value={contractData.notice}
+                      onChange={(e) => updateContractData('notice', e.target.value)}
                       size="small"
                       type="number"
                     />
@@ -701,40 +645,21 @@ ${party2} - Date: ______________
               </Grid>
               
               {/* Contract Preview */}
-              <Grid item xs={12} md={9}>
-                <Paper elevation={3} sx={{ p: { xs: 2, md: 4 }, mb: 3 }}>
-                  <Box id="contract-content" sx={{ 
-                    fontFamily: '"Times New Roman", Times, serif',
-                    fontSize: '14px',
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    '& h1': {
-                      fontSize: '24px',
-                      textAlign: 'center',
-                      fontWeight: 'bold',
-                      marginBottom: '1em'
-                    },
-                    '& h2': {
-                      fontSize: '16px',
-                      fontWeight: 'bold'
-                    },
-                    '& h3': {
-                      fontSize: '14px',
-                      fontWeight: 'bold'
-                    },
-                    '& strong': {
-                      fontWeight: 'bold'
-                    }
-                  }}>
-                    <div dangerouslySetInnerHTML={{ __html: generatedContract.replace(/\n/g, '<br />') }}></div>
+              <Grid item xs={12} md={8} lg={9}>
+                <Paper elevation={3} sx={{ mb: 3, overflow: 'auto', maxHeight: '70vh' }}>
+                  <Box id="contract-content" sx={contractStyles}>
+                    <div dangerouslySetInnerHTML={{ 
+                      __html: generatedContract.replace(/\n/g, '<br />') 
+                    }}></div>
                   </Box>
                 </Paper>
                 
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, flexDirection: isMobile ? 'column' : 'row', gap: 2 }}>
                   <Button
                     onClick={() => setStep(1)}
                     variant="outlined"
                     startIcon={<ArrowBackIcon />}
+                    fullWidth={isMobile}
                   >
                     Back to Editor
                   </Button>
@@ -743,6 +668,7 @@ ${party2} - Date: ______________
                     variant="contained"
                     color="primary"
                     startIcon={<DownloadIcon />}
+                    fullWidth={isMobile}
                   >
                     Download as PDF
                   </Button>
@@ -752,6 +678,7 @@ ${party2} - Date: ______________
           )}
         </Container>
         
+        {/* Footer */}
         <Box
           component="footer"
           sx={{
@@ -769,6 +696,7 @@ ${party2} - Date: ______________
         </Box>
       </Box>
       
+      {/* Notifications */}
       <Snackbar
         open={downloadSuccess}
         autoHideDuration={3000}
